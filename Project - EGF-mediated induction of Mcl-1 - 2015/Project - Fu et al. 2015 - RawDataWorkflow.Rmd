@@ -1,0 +1,68 @@
+---
+title: "Project - Fu et al. 2015 - RawDataWorkflow"
+author: "Max"
+date: "2024-03-05"
+output: html_document
+---
+# Summary of RNA-seq expirment 
+During pregnancy, the mammary epithelium cells change through cellular proliferation, differentiation and death. This is a response due to the need for lactation during pregnancy and is charafcterized by ductal elongation and branching of an inner layer of luminal cells (milk producing cells) and an outer layer of basal cells (supporting stem cells). The aim of this paper was to see what happens when the pro-survival gene Mcl-1  was deleted from the cells. What the researchers found was that Mcl-1 expression was induced at the protein but not mRNA level, inferring regulation at the post-transcriptional level. Specifically, they found EGF as the leading protein causing these post-transcriptional regulations of the mcl1 protein. A RNA-seq analysis of  freshly sorted luminal and basal populations (from virgin, 18.5-day-pregnant and 2-day-lactating mammary glands) was conducted. The results showed that there was no increase in mRNA mcl1 expression, while in reality, there was more mcl1 protein expression as confirmed by a westernblot. This showed proved that Mcl-1 expression was induced at the protein but not mRNA level.  
+The workflow below is the RNA-seq experiment used in thee experiment. 
+*Data and Sources:*  
+*https://www.nature.com/articles/ncb3117, https://www.ncbi.nlm.nih.gov/Traces/study/?acc=PRJNA258286&o=acc_s%3Aa, https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE60450*
+
+# RNA-seq Analysis Workflow
+
+#### Paper Direct Process
+Total RNA was extracted from sorted luminal or basal populations from the mammary glands of virgin, 18.5-day-pregnant and 2-day-lactating FVB/N female mice (two independent samples per stage). Total RNA (100 ng) was used to generate libraries for whole-transcriptome analysis following Illumina’s TruSeq RNA v2 sample preparation protocol. Libraries were sequenced on an Illumina HiSeq 2000 at the Australian Genome Research Facility (AGRF), Melbourne. At least 20 million 100 bp single-end reads were obtained for each sample. Reads were aligned to the mouse genome mm10 using Rsubread version 13.25 (ref. 51). The number of reads overlapping each Entrez gene was counted using RefSeq gene annotation and featureCounts51. Filtering and normalization used the edgeR package52. Genes were filtered as unexpressed if their average count per million (CPM) computed by the aveLogCPM function was less than one. Compositional differences between libraries were normalized using the trimmed mean of M-values (TMM) method53. Differential expression was analysed used the Limma package54. Counts were transformed to log2-CPM values with associated precision weights using voom55. Differential expression was assessed using the TREAT method56, whereby differential expression is evaluated relative to a biologically meaningful fold-change threshold. Genes were considered to be differentially expressed if they achieved a false discovery rate of 1% in exceeding a fold-change of 1.5. Gene ontology analysis used the goseq package57, which corrects the analysis for gene length bias. Log-CPM values shown in heat maps were computed using the edgeR package with a prior.count of 3 to reduce variability at low counts.  
+
+
+
+<div style="text-align: center;">
+#### Outline of RNA-seq and tools
+</div>
+
+1. **Read Quality / Pre-processing**
+  - Data type: `fastq` 
+  - Process: `FastQC` to evalute quality scores. `Trimmomatic` or `trimLRPatterns` in `biostrings` to trim data 
+  - (note) single end reads
+2. **Read Alignments**
+  - Data type: `BAM` format
+  - Process: Align reads (fastq files) to the reference genome *mm10* using `Rsubread` or `hisat2`. Then convert the alignments to the BAM file format
+3. **Read Counting**
+  - Data type: tabular/csv (essentially the same as proccessed data) 
+  - Process: Count the number of reads mapping to each gene using tools like `featureCounts`, which assigns reads to genes based on genomic features. 
+  - An alternative way to do read counts would be to use `systempipeR` and the bioconductor packages using `summarizeOverlaps` function
+
+<div style="text-align: center;">
+*Everything under is data analyzing and graphics*
+</div> 
+
+4. **Normalization and Differential Expression Analysis**
+  - Data type: Count data, normalized expression values, statistics
+  - Process: Use the `edgeR` package to filter, normalize, and perform differential expression analysis. Filter out genes with low expression levels (e.g., average CPM < 1). Normalize the count data to account for differences in library size and composition using the trimmed mean of M-values (TMM) method. Detect differentially expressed genes using the `Limma package`. Transform count data into log2-CPM values with precision weights using the voom function. Assess differential expression using the TREAT method, which evaluates fold changes relative to a biologically meaningful threshold.
+  - (note) This may be a little beyond my current knowledge. It is possible to come back to this later.
+  
+5. **Gene Ontology (GO) Analysis**
+  - Data type: Gene list / GTF or GFF files
+  - Conduct gene ontology analysis to identify enriched biological processes, cellular components, and molecular functions associated with differentially expressed genes.Possible to use packages like `goseq` to correct for biases introduced by gene length and `TxDb packages` in Bioconductor for R
+
+6. **Visualization**
+  - Data type: pdfs or pngs
+  - Use the processed data (csv) or edge R to create heat maps and other plots. `GGplot2` can also be used. 
+
+### Downloading the data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

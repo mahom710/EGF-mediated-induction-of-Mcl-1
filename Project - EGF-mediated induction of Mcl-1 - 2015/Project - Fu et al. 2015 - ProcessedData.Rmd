@@ -1,0 +1,220 @@
+---
+title: "RMarkdown Project - Fu et al. 2015"
+author: "Max"
+date: "2024-03-03"
+output: html_document
+---
+# Summary of Fu et al. 2015
+
+
+# Raw Data
+
+
+# Processed Data
+
+- data comes from GREIN which is a processed RNA-seq data (raw and processed counts)
+  - RNA-seq data from the paper by Fu et al. 2015, GEO code GSE60450
+    - raw data = `counts` and `sampleinfo`
+  - data is RNA-seq mouse mammary glands of basal vs luminal cells
+  - these express different genes (basal more stem cell, luminal for secretion)
+  - data is in csv format which is a data frame (2d tabular data structure) 
+  
+### Using tidyverse on data sets
+
+```{r}
+suppressMessages(library(tidyverse))
+suppressMessages(library(knitr))
+counts <- read.csv("data/GSE60450_GeneLevel_NormalizedCPM.and_.TMM_data.csv")
+sampleinfo <- read.csv("data/GSE60450_filtered_metadata-1.csv")
+colnames(counts)[1] <- "genID"
+
+```
+
+# Combining and Transforming Data
+
+- there is a difference between **wide** and **long** data sets
+  - In **wide data** format, each observation is represented by a single row, and each variable is represented by a separate column. 
+  - In **long data** has each variable in each row. 
+- use `pivot_longer` to change data to a long format
+
+### Converting Data to Long Type Data
+```{r}
+head(counts) #wide data #col is what you are pivoting
+
+seqdata <- pivot_longer(counts, col = starts_with("GSM"), names_to = "Sample", values_to = "Count")   #long data
+
+head(seqdata)
+```
+- now that we have the count data in the long format (seqdata), we can "join" the count and sample info data together using the `full_join()` function
+
+```{r}
+allinfo <- full_join(seqdata, sampleinfo, by = c("Sample" = "X"))
+head(allinfo)
+
+```
+
+# Read Counts Plots (Box, Density, Bar)
+
+### Read Counts Boxplot
+
+```{r}
+ggplot(data = allinfo, mapping = aes(x = Sample, y = log2(Count + 1))) + geom_boxplot() + theme(axis.text.x = element_text(angle = 90))
+```
+
+- log(2) is used for rna-seq counts to normalize the data and help outliers. The +1 in the log2 is used because the log function will be undefined at 0, causing ggplot to not be able to graph the read counts that have 0. Adding 1 will create a near 0 value for these reads
+
+### Read Counts Violin plot:
+
+```{r}
+ggplot(data = allinfo, mapping = aes(x = Sample, y = log2(Count + 1))) + geom_violin() + theme(axis.text.x = element_text(angle = 90))
+```
+
+- width represents the density of data points at the given value
+- you can add color and other visual things by adding within the ggplot function
+
+Both of these plots are good for seeing the **distribution** of the data.
+
+### bar plot
+```{r}
+ggplot(data = allinfo, mapping = aes(x = Sample, weight = log2(Count + 1), fill = Sample)) + geom_bar() + theme(axis.text.x = element_text(angle = 90)) 
+```
+
+### density plot
+
+```{r}
+ggplot(data = allinfo, mapping = aes(x = log2(Count+1), color = Sample)) + geom_density()
+```
+
+- so now it is a density plot of the counts "filled" by the samples or observed variable
+- essentially it is creating a density curve for each observed variable (x var / sample)
+-  how to save a plot
+  - put `pdf("<name>.pdf")` before `ggplot()`
+
+# Visualiztion of Read Counts of the Top 8 Genes
+
+### Simplifying the Chracteristics into an Acronym 
+
+```{r}
+allinfo <- mutate(allinfo, Group = case_when(
+str_detect(characteristics, "basal.*virgin") ~ "Bas.Virg.",
+str_detect(characteristics, "basal.*preg") ~ "Bas.Preg.",
+str_detect(characteristics, "basal.*lact") ~ "Bas.Lact.",
+str_detect(characteristics, "luminal.*virgin") ~ "Lum.Virg.",
+str_detect(characteristics, "luminal.*preg") ~ "Lum.Preg.",
+str_detect(characteristics, "luminal.*lact") ~ "Lum.Lact."
+))
+head(allinfo)
+
+```
+
+- this is mutating `allinfo` 
+- `Group` is the name of the column we want to make
+- (note) that the `mutate` function is meant to do calculations by each row. 
+
+### Filtering for the Top 8 Read Count Genes
+
+Find the top 8 genes of interest (the genes with highest counts / reads)
+
+```{r}
+mygenes <- allinfo %>%
+group_by(gene_symbol) %>%
+summarise(Total_count = sum(Count)) %>%
+arrange(desc(Total_count)) %>%
+head(n = 8) %>%
+pull(gene_symbol)
+```
+
+*How this work*
+
+2. This groups the data by the gene_symbol column. It means that subsequent operations will be applied separately within each group defined by unique gene symbols.
+3. Within each group (each unique gene symbol), this calculates the total count of occurrences. It creates a new column named Total_count containing the sum of the Count column for each gene symbol group.
+4. This arranges the groups in descending order based on the Total_count column. The genes with the highest total counts will appear first after this step.
+5. This selects the top 8 rows from the arranged data frame. These will be the genes with the highest total counts.
+6. Finally, it extracts the values from the gene_symbol column of the resulting data frame. This operation converts the column into a vector containing the gene symbols of the top 8 genes.
+
+Top 8 Genes in a Vector
+```{r}
+mygenes <- c("Csn1s2a", "Csn1s1", "Csn2", "Glycam1", "COX1", "Trf", "Wap", "Eef1a1")
+
+```
+
+
+filters for the genes of interest using the `filter` function
+```{r}
+mygenes_counts <- filter(allinfo, gene_symbol %in% mygenes)
+mygenes_counts
+```
+
+### visualizing the data
+
+Changing the order of the variables for visualization
+```{r}
+group_order <- c("Bas.Virg.", "Bas.Preg.", "Bas.Lact.", "Lum.Virg.", "Lum.Preg.", "Lum.Lact.")
+mygenes_counts <- mutate(mygenes_counts, Group_f = factor(Group, levels = group_order))
+```
+
+- Have to create a `factor` data type which is used for categorization 
+  - factor variable orders the levels or rows for each group. we mutate this to the exisiting data frame
+
+Visualizing the top 8 genes that have the highest read counts 
+
+```{r}
+ggplot(mygenes_counts, mapping = aes(x = Group_f, y = log2(Count+1), colour = Group_f)) + geom_boxplot()
+```
+
+
+Now, if we want create a plot for each gene based on the Group (the shortened characterisitcs of each cell tested) and counts, we can add the `facet_wrap(~ gene_symbol)` to ggplot 
+
+```{r}
+ggplot(mygenes_counts, mapping = aes(x = Group_f, y = log2(Count+1), colour = Group_f))+
+geom_jitter()+
+facet_wrap(~ gene_symbol)+
+labs(x = "Cell Type and Stage", y = "Count (log scaled reads)", title = "Mammary Gland RNA-seq Data")+
+theme(axis.text.x = element_text(angle = 90))
+```
+
+
+```{r}
+ggplot(mygenes_counts, mapping = aes(x = Group_f, y = log2(Count+1), fill = Group_f))+
+stat_summary(fun = "mean", geom = "bar")+
+facet_wrap(~ gene_symbol)+
+labs(x = "Cell Type and Stage", y = "Count (log scaled reads)", title = "Average Mammary Gland RNA-seq Counts")+
+theme(axis.text.x = element_text(angle = 90))
+```
+
+# Finding the mcl-1 gene and reading the counts
+
+Based on this part of the article:  
+<small>Mcl-1 expression is markedly upregulated in luminal cells during lactation
+Analysis of Mcl-1 expression revealed that its protein levels varied substantially between the different mammary developmental stages. Profound upregulation of Mcl-1 was evident at the onset of lactation, in contrast to the very low levels of Mcl-1 present at other stages of morphogenesis, based on both immunohistochemical and western blot analyses (Fig. 1a and Supplementary Fig. 1a). Evaluation of protein expression in freshly sorted cells (Supplementary Fig. 1b, c) from the mammary stem cell (MaSC)-enriched/basal (denoted MaSC/basal; CD29hiCD24+) and luminal (CD29loCD24+) cell populations indicated that Mcl-1 upregulation was confined to alveolar luminal cells of the lactating gland and that expression was very low in the MaSC/basal subset across all of the development stages (Fig. 1b and Supplementary Fig. 1d, e). Confocal imaging in three dimensions17 verified that the Mcl-1 protein was induced exclusively in both ductal and alveolar luminal cells at the onset of lactation (Fig. 1c and Supplementary Fig. 2). In contrast to Mcl-1, Bcl-2 was markedly downregulated during pregnancy, whereas Bcl-xL levels remained unchanged through the different developmental stages (Fig. 1b and Supplementary Fig. 1d). Interestingly, Mcl-1 transcript levels were similar across development by quantitative PCR with reverse transcription (qRT–PCR), with an approximate twofold decrease in messenger RNA levels in luminal cells during lactation (Supplementary Fig. 1f). These data indicate that Mcl-1 expression is subject to post-transcriptional regulation at the onset of lactation. Indeed, there is substantial evidence for post-transcriptional and translational control of Mcl-1 expression in other systems.</small>
+
+and
+
+<small>We next interrogated potential molecular regulators that could mediate the marked induction of Mcl-1 expression that occurs on lactogenesis. As noted earlier, Mcl-1 expression was induced at the protein but not mRNA level, inferring regulation at the post-transcriptional level. RNA-seq analysis was performed on freshly sorted luminal and basal populations from virgin, 18.5-day-pregnant and 2-day-lactating mammary glands. Substantial changes in gene expression were observed in the luminal population between late pregnancy and early lactation, whereas expression changes in MaSC/basal cells were smaller and there was little overlap between differentially expressed genes in the two populations (Fig. 6a). Notably, Mcl-1 levels were slightly decreased between pregnancy and lactation (Fig. 6b), consistent with qRT–PCR data (Supplementary Fig. 1f). Gene ontology analysis of differentially expressed genes showed enrichment for general metabolic processes, lipid biosynthesis and transport proteins in the luminal compartment, and enrichment for cell contractility genes in the MaSC/basal subset at lactation (Supplementary Table 1), commensurate with the primary function of the gland at this stage24. Gene expression changes in similar functional groups were also observed in microarray studies performed on whole mammary glands25. It is noteworthy that there were no significant changes in the transcript levels of E3 ligases and deubiquitylases known to regulate Mcl-1 protein turnover26,27. Moreover, no change in the stability of Mcl-1 protein was evident, based on cycloheximide pulse-chase experiments using sorted cell subpopulations (Supplementary Fig. 3a). Thus, the induction of Mcl-1 at lactation seems to be independent of transcriptional or protein stabilization mechanisms.</small>
+
+
+Finding the mcl1 data and creating some graphs for it
+```{r}
+mcl1_index <- which(allinfo$gene_symbol == "Mcl1")
+mcl1 <- allinfo[mcl1_index,]
+mcl1 <- mutate(mcl1, Group_f = factor(Group, levels = group_order))
+ggplot(data = mcl1, mapping = aes(x = Group_f, y = Count, fill = Group_f)) + stat_summary(fun = "mean", geom = "bar")
+ggplot(data = mcl1, mapping = aes(x = Group_f, y = Count, colour = Group_f)) + geom_jitter()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,40 @@
+q1 <- function(){
+  
+  before <- c(3.2, 3.5, 3.4, 3.1, 2.9, 3.3, 3.0, 3.2, 3.6, 3.1) + 5
+  after <- c(3.5, 3.7, 3.6, 3.3, 3.1, 3.6, 3.2, 3.4, 3.8, 3.3) + 5
+  
+  result <- t.test(before, after, paired = TRUE)
+  
+}
+
+q2 <- function(){
+  
+  a <- c(45, 48, 50, 43, 47, 44, 49, 46, 48, 42, 51, 47, 44, 49, 45)
+  b <- c(40, 42, 38, 41, 43, 39, 42, 44, 41, 40, 42, 38, 41, 43, 39)
+  
+  result <- t.test(a, b, alternative = "greater")
+  
+}
+
+q3 <- function(){
+  group_1 <- c(10, 12, 11, 13, 10, 11, 12, 13, 11, 12, 10, 13)
+  group_2 <- c(9, 10, 11, 9, 12, 10, 11, 9, 10, 12, 11, 9)
+  group_3 <- c(8, 7, 9, 8, 8, 9, 7, 8, 9, 8, 7, 9)
+  data <- data.frame(group = rep(1:3, each = 12), time = c(group_1, group_2, group_3))
+  
+  result <- aov(time ~ group, data = data)
+  
+  summary(result)
+  
+
+}
+
+q4 <- function(){
+  before_cleaning <- c(25, 28, 23, 26, 27, 24, 29, 26, 28, 22, 25, 27, 23, 24, 26)
+  after_cleaning <- c(28, 31, 26, 29, 30, 27, 32, 29, 31, 25, 28, 30, 26, 27, 29)
+
+  result <- t.test(before_cleaning, after_cleaning)
+  print(result)
+  
+
+}
